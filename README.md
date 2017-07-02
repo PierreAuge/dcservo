@@ -1,6 +1,10 @@
 # dcservo
 by misan
 
+My interest in this project is to make implementation with larger motor controllers more practical and easier. So far one arduino sketch is tested and complete allowing the use of the cheap IBT-2 40Amp (peak) motor controller. 
+
+Several others are in the works with much higher current limits.
+
 This project uses and Arduino (or similar) to create a closed-loop position control for a DC motor to act 
 as a replacement of a stepper motor and its drive electronics. In order to be compatible with stepper logic
 controller accepts two inputs STEP and DIRECTION so an external trajectory controller can operate the motor
