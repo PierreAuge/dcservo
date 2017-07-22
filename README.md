@@ -5,9 +5,9 @@ by misan
 // So far I've made a very minor modification to implement use of the IBT-2 43Amp Motor Controller for use with larger motors.
 // So far so good. I've tested it within a large robot assembly and it seems to be working. 
 
-This project uses and Arduino (or similar) to create a closed-loop position control for a DC motor to act 
-as a replacement of a stepper motor and its drive electronics. In order to be compatible with stepper logic
-controller accepts two inputs STEP and DIRECTION so an external trajectory controller can operate the motor
+This project uses an Arduino (or similar) to create a closed-loop position control for a DC motor to act 
+as a replacement for a stepper motor and its drive electronics. In order to be compatible with stepper logic,
+the controller accepts two inputs STEP and DIRECTION so an external trajectory controller can operate the motor
 as it would do with a stepper.
 
 This code depends on the excellent Arduino PID library by Brett Beauregard: https://github.com/br3ttb/Arduino-PID-Library/
