@@ -1,16 +1,18 @@
+#include <Arduino.h>
+
 /*
- * Miguel Sanchez 2106
+ * Miguel Sanchez 2016
    Mauro Manco 2016 Porting on ESP8266
 
-   Please note PID gains kp, ki, kd need to be tuned to each different setup. 
+   Please note PID gains kp, ki, kd need to be tuned to each different setup.
 */
 
 #include <EEPROM.h>
 #include <PID_v1.h>
 #include <ESP8266WiFi.h>
 
-const char* ssid = "*****";
-const char* password = "****";
+const char* ssid = "MoverRail";
+const char* password = "PierreMoverRailTest";
 
 // Create an instance of the server
 // specify the port to listen on as an argument
@@ -19,11 +21,14 @@ WiFiClient client;
 
 const int encoder0PinA = 13;
 const int encoder0PinB = 12;
-const int Step = 14;
-const int M1=16;
-const int M2=5;
+/////////////////////////////
+const int Step = 5;
 const int DIR=4;
-const int PWM_MOT=15;
+/////////////////////////////
+const int M1=16;
+const int M2=14;
+/////////////////////////////
+const int PWM_MOT=15; // Wire both ENABLE lines from IBT-2 to this PIN
 
 byte pos[1000]; int p=0;
 double kp=3,ki=0,kd=0.0;
@@ -52,8 +57,8 @@ void toggle() {
   void pwmOut(int out) {
    if(out>0) { digitalWrite(M1,0); analogWrite(M2,out); }
    else      { analogWrite(M1,-out); digitalWrite(M2,0); }
-   //analogWrite(PWM_MOT,abs(out));
-   //PWM = out;
+   analogWrite(PWM_MOT,abs(out));
+   PWM = out;
   }
 
 const int QEM [16] = {0,-1,1,2,1,0,2,-1,-1,2,0,1,2,1,-1,0};               // Quadrature Encoder Matrix
@@ -89,11 +94,11 @@ void help() {
  client.println(F("? prints out current encoder, output and setpoint values"));
  client.println(F("X123 sets the target destination for the motor to 123 encoder pulses"));
  client.println(F("T starts a sequence of random destinations (between 0 and 2000) every 3 seconds. T again will disable that"));
- client.println(F("Q prints out the current values of P, I and D parameters")); 
- client.println(F("W stores current values of P, I and D parameters into EEPROM")); 
- client.println(F("H prints this help message again")); 
- client.println(F("A toggles on/off showing regulator status every second\n")); 
- client.println(F("B closes the connection\n")); 
+ client.println(F("Q prints out the current values of P, I and D parameters"));
+ client.println(F("W stores current values of P, I and D parameters into EEPROM"));
+ client.println(F("H prints this help message again"));
+ client.println(F("A toggles on/off showing regulator status every second\n"));
+ client.println(F("B closes the connection\n"));
 }
 
 
@@ -133,14 +138,14 @@ void recoverPIDfromEEPROM() {
     kp=eeget(0);
     ki=eeget(4);
     kd=eeget(8);
-    myPID.SetTunings(kp,ki,kd); 
+    myPID.SetTunings(kp,ki,kd);
   }
   else client.println(F("*** Bad checksum"));
 }
 
 
 void eedump() {
- for(int i=0; i<16; i++) { client.print(EEPROM.read(i),HEX); client.print(" "); }client.println(); 
+ for(int i=0; i<16; i++) { client.print(EEPROM.read(i),HEX); client.print(" "); }client.println();
 }
 
 
@@ -161,7 +166,7 @@ void setup() {
   toggle();
   help();
   recoverPIDfromEEPROM();
-  //Setup the pid 
+  //Setup the pid
   myPID.SetMode(AUTOMATIC);
   myPID.SetSampleTime(1);
   myPID.SetOutputLimits(-255,255);
@@ -171,16 +176,16 @@ void setup() {
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
-  
+
   WiFi.begin(ssid, password);
-  
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
   Serial.println("");
   Serial.println("WiFi connected");
-  
+
   // Start the server
   server.begin();
   Serial.println("Server started");
@@ -215,14 +220,14 @@ void process_line() {
 
 void loop() {
     if(!client) client = server.available();
-    input = encoder0Pos; 
+    input = encoder0Pos;
     setpoint=target1;
     while(!myPID.Compute()); // wait till PID is actually computed
     if(client && client.available()) process_line();
-    pwmOut(output); 
+    pwmOut(output);
     if(auto1) if(millis() % 3000 == 0) target1=random(2000); // that was for self test with no input from main controller
     if(auto2) if(millis() % 1000 == 0) printPos();
-    if(counting && abs(input-target1)<15) counting=false; 
+    if(counting && abs(input-target1)<15) counting=false;
     if(counting &&  (skip++ % 5)==0 ) {pos[p]=encoder0Pos; if(p<999) p++; else counting=false;}
 
    }

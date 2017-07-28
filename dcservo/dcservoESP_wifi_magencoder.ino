@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 /*
  * Miguel Sanchez 2106
    Mauro Manco 2016 Porting on ESP8266

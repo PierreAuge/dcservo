@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 /*
  * Temporary setting:
  * 0 - step input

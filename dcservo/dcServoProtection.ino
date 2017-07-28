@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 /* This one is not using any PinChangeInterrupt library */
 
 /*

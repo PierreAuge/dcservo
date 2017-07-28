@@ -1,7 +1,7 @@
+#include <Arduino.h>
+
 /*
  * Miguel Sanchez 2106
-   Mauro Manco 2016 Porting on ESP8266
-   
    This program uses an Arduino Pro Micro variant for a closed-loop control of a DC-motor. 
    Motor motion is detected by a quadrature encoder.
    Two inputs named STEP and DIR allow changing the target position.
@@ -14,29 +14,30 @@
    Analog input A0 is the DIR input.
    Digital outputs 6 & 7 control the direction outputs for the motor (I am using half TB6612FNG here).
    Digital output 9 is PWM motor control
+
+
    Please note PID gains kp, ki, kd need to be tuned to each different setup. 
 */
+// for 16-bit PWM on pin 9
+#define PWM OCR1A 
+
 
 #include <EEPROM.h>
 #include <PID_v1.h>
-#include <Wire.h>         // support for I2C encoder
+#define encoder0PinA  3 // PD0; 
+#define encoder0PinB  2 // PD1;
 
-
-
-const int Step = 14;
-const int M1=16; // D0
-const int M2=5;  // D1 
-const int DIR=4; // D2 
-const int PWM=0; //D3
+#define M1            6  // No motor's PWM outputs
+#define M2            7  // just set the direction
 
 byte pos[1000]; int p=0;
-double kp=0.001,ki=0,kd=0.0;
+
+double kp=3,ki=0,kd=0.0;
 double input=0, output=0, setpoint=0;
 PID myPID(&input, &output, &setpoint,kp,ki,kd, DIRECT);
 volatile long encoder0Pos = 0;
 boolean auto1=false, auto2=false,counting=false;
 long previousMillis = 0;        // will store last time LED was updated
-long pos1;
 
 long target1=0;  // destination location at any moment
 
@@ -46,90 +47,70 @@ bool oldStep = false;
 bool dir = false;
 byte skip=0;
 
-void toggle() {
-  static int state = 0;
-  state = !state;
-  digitalWrite(BUILTIN_LED, state);
-}
-word readTwoBytes()
-{
-  word retVal = -1;
 
-  /* Read Low Byte */
-  Wire.beginTransmission(0x36);
-  Wire.write(0x0d);
-  Wire.endTransmission();
-  Wire.requestFrom(0x36, 1);
-  while (Wire.available() == 0);
-  int low = Wire.read();
+void setup() { 
+  pinMode(encoder0PinA, INPUT); 
+  pinMode(encoder0PinB, INPUT);  
+  pinMode(M1, OUTPUT); 
+  pinMode(M2, OUTPUT);  
+  attachInterrupt(0, encoderInt, CHANGE);  // encoder pin on interrupt 0 - pin 3
+  attachInterrupt(1, encoderInt, CHANGE);  // encoder pin on interrupt 1 - pin 2
 
-  /* Read High Byte */
-  Wire.beginTransmission(0x36);
-  Wire.write(0x0c);
-  Wire.endTransmission();
-  Wire.requestFrom(0x36, 1);
-
-  while (Wire.available() == 0);
-
-  word high = Wire.read();
-
-  high = high << 8;
-  retVal = high | low;
-
-  return retVal;
-}
-
-int angle,diff;
-double before = 0;
-
-void setup() {
+  pinMode(9, OUTPUT);
+/*
+  // Set timer 1 to 16-bit Fast PWM
+  ICR1 = 0xFFFF;
+  TCCR1A = 0b10101010;
+  TCCR1B = 0b00011001;
+  PWM=0; */
+  attachInterrupt(2, countStep      , RISING);  // step  input on interrupt 2 - pin 0 
+  TCCR1B = TCCR1B & 0b11111000 | 1; // set 31Kh PWM
   Serial.begin (115200);
-  pinMode(BUILTIN_LED, OUTPUT);
-  pinMode(Step, INPUT);
-  pinMode(PWM, OUTPUT);
-  pinMode(DIR,OUTPUT);
-  attachInterrupt(Step, countStep, RISING);
-  analogWriteFreq(10000);  // set PWM to 20Khz
-  analogWriteRange(255);   // set PWM to 255 levels (not sure if more is better)
-  toggle();
   help();
   recoverPIDfromEEPROM();
   //Setup the pid 
   myPID.SetMode(AUTOMATIC);
   myPID.SetSampleTime(1);
   myPID.SetOutputLimits(-255,255);
-  Wire.begin(12,13); // start I2C driver code D6 & D7
-}
-void loop() {
-    angle = readTwoBytes(); //analogRead(A0); // encoder0Pos;
-  // process encoder rollover
-  diff = angle - before;
-  if (diff < -3500) pos1 += 4096;
-  else if (diff > 3500) pos1 -= 4096;
-  before = angle;
-  input = pos1 + angle;
-  
-    //if(!client) client = server.available();
-    //input = encoder0Pos; 
+} 
+
+void loop(){
+    input = encoder0Pos; 
     setpoint=target1;
     while(!myPID.Compute()); // wait till PID is actually computed
-    if(Serial.available()) process_line();
-    //if(client && client.available()) process_line();
+    if(Serial.available()) process_line(); // it may induce a glitch to move motion, so use it sparingly 
     pwmOut(output); 
     if(auto1) if(millis() % 3000 == 0) target1=random(2000); // that was for self test with no input from main controller
     if(auto2) if(millis() % 1000 == 0) printPos();
-    if(counting && abs(input-target1)<15) counting=false; 
-    if(counting &&  (skip++ % 5)==0 ) {pos[p]=input; if(p<999) p++; else counting=false;}
+    //if(counting && abs(input-target1)<15) counting=false; 
+    if(counting &&  (skip++ % 5)==0 ) {pos[p]=encoder0Pos; if(p<999) p++; else counting=false;}
+}
 
-   }
+/*
+void pwmOut(int out) {
+   if(out<0) { analogWrite(M1,0); analogWrite(M2,abs(out)); }
+   else { analogWrite(M2,0); analogWrite(M1,abs(out)); }
+  }
+  */
   void pwmOut(int out) {
-   if(out>=0) digitalWrite(DIR, HIGH); else digitalWrite(DIR, LOW); // control direction pin
-   analogWrite(PWM,255-abs(out)); // my Nidec Brushless Motor 24H PWM works the other way around
+   if(out>0) { digitalWrite(M1,0); digitalWrite(M2,1); }
+   else      { digitalWrite(M1,1); digitalWrite(M2,0); }
+   analogWrite(9,abs(out));
+   //PWM = out;
   }
 
+const int QEM [16] = {0,-1,1,2,1,0,2,-1,-1,2,0,1,2,1,-1,0};               // Quadrature Encoder Matrix
+static unsigned char New, Old;
 
-void countStep(){ if (digitalRead(DIR)== HIGH) target1--;else target1++;
-} // pin A0 represents direction == PF7 en Pro Micro
+
+void encoderInt() { // handle pin change interrupt for D2
+  Old = New;
+  New = PIND & 3; //(PINB & 1 )+ ((PIND & 4) >> 1); //
+  encoder0Pos+= QEM [Old * 4 + New];
+}
+
+
+void countStep(){ if (PINF&B10000000) target1--;else target1++; } // pin A0 represents direction == PF7 en Pro Micro
 
 void process_line() {
  char cmd = Serial.read();
@@ -148,20 +129,16 @@ void process_line() {
   case 'K': eedump(); break;
   case 'R': recoverPIDfromEEPROM() ; break;
   case 'S': for(int i=0; i<p; i++) Serial.println(pos[i]); break;
-  case 'M': pwmOut(Serial.parseInt()); break; // just ignore it unless you disable pwmOut in the main loop
  }
-// while(Serial.read()!=10); // dump extra characters till LF is seen (you can use CRLF or just LF)
+ while(Serial.read()!=10); // dump extra characters till LF is seen (you can use CRLF or just LF)
 }
 
 void printPos() {
-  Serial.print(F("Position=")); Serial.print(input); Serial.print(F(" PID_output=")); Serial.print(output); Serial.print(F(" Target=")); Serial.println(setpoint);
+  Serial.print(F("Position=")); Serial.print(encoder0Pos); Serial.print(F(" PID_output=")); Serial.print(output); Serial.print(F(" Target=")); Serial.println(setpoint);
 }
-
-
-
-   void help() {
+void help() {
  Serial.println(F("\nPID DC motor controller and stepper interface emulator"));
- Serial.println(F("by misan - porting cured by Exilaus"));
+ Serial.println(F("by misan"));
  Serial.println(F("Available serial commands: (lines end with CRLF or LF)"));
  Serial.println(F("P123.34 sets proportional term to 123.34"));
  Serial.println(F("I123.34 sets integral term to 123.34"));
