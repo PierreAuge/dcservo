@@ -158,7 +158,7 @@ void setup() {
   pinMode(Step, INPUT);
   //pinMode(PWM_MOT, OUTPUT);
   pinMode(ENABLE, OUTPUT);
-  digitalWrite(ENABLE, 1);
+  digitalWrite(ENABLE, 0);
   pinMode(M1,OUTPUT);
   pinMode(M2,OUTPUT);
   analogWriteFreq(20000);  // set PWM to 20Khz
