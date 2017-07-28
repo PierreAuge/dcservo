@@ -19,16 +19,17 @@ const char* password = "PierreMoverRailTest";
 WiFiServer server(23);
 WiFiClient client;
 
-const int encoder0PinA = 13;
-const int encoder0PinB = 12;
+const int encoder0PinA = 13; //D7
+const int encoder0PinB = 12; //D6
 /////////////////////////////
-const int Step = 5;
-const int DIR=4;
+const int Step = 5; //D1
+const int DIR=4; //D2
 /////////////////////////////
-const int M1=16;
-const int M2=14;
+const int M1=16; //D0
+const int M2=14; //D5
 /////////////////////////////
-const int PWM_MOT=15; // Wire both ENABLE lines from IBT-2 to this PIN
+//const int PWM_MOT=15; // Unused With IBT-2
+const int ENABLE=15;
 
 byte pos[1000]; int p=0;
 double kp=3,ki=0,kd=0.0;
@@ -57,8 +58,8 @@ void toggle() {
   void pwmOut(int out) {
    if(out>0) { digitalWrite(M1,0); analogWrite(M2,out); }
    else      { analogWrite(M1,-out); digitalWrite(M2,0); }
-   analogWrite(PWM_MOT,abs(out));
-   PWM = out;
+   //analogWrite(PWM_MOT,abs(out));
+   //PWM_MOT = out;
   }
 
 const int QEM [16] = {0,-1,1,2,1,0,2,-1,-1,2,0,1,2,1,-1,0};               // Quadrature Encoder Matrix
@@ -155,7 +156,9 @@ void setup() {
   pinMode(encoder0PinA, INPUT);
   pinMode(encoder0PinB, INPUT);
   pinMode(Step, INPUT);
-  pinMode(PWM_MOT, OUTPUT);
+  //pinMode(PWM_MOT, OUTPUT);
+  pinMode(ENABLE, OUTPUT);
+  digitalWrite(ENABLE, 1);
   pinMode(M1,OUTPUT);
   pinMode(M2,OUTPUT);
   analogWriteFreq(20000);  // set PWM to 20Khz
