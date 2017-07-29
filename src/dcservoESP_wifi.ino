@@ -11,8 +11,8 @@
 #include <PID_v1.h>
 #include <ESP8266WiFi.h>
 
-const char* ssid = "MoverRail";
-const char* password = "PierreMoverRailTest";
+const char* ssid = "Mover";
+const char* password = "MoverTest";
 
 // Create an instance of the server
 // specify the port to listen on as an argument
@@ -23,10 +23,10 @@ const int encoder0PinA = 13; //D7
 const int encoder0PinB = 12; //D6
 /////////////////////////////
 const int Step = 5; //D1
-const int DIR=4; //D2
+const int DIR=4;    //D2
 /////////////////////////////
-const int M1=16; //D0
-const int M2=14; //D5
+const int M1=16;    //D0
+const int M2=14;    //D5
 /////////////////////////////
 //const int PWM_MOT=15; // Unused With IBT-2
 const int ENABLE=15;
