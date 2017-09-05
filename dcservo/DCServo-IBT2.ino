@@ -9,7 +9,7 @@
    Serial port prints current position and target position every second.
    Serial input can be used to feed a new location for the servo (no CR LF).
    Pins used:
-   Digital inputs 2 & 9 are connected to the two encoder signals (AB).
+   Digital inputs 2 & 8 are connected to the two encoder signals (AB).
    Digital input 3 is the STEP input.
    Analog input 0 is the DIR input.
    Digital outputs 5 & 6 control the PWM outputs for the motor (I am using IBT-2 H-Bridge).
